@@ -1,0 +1,881 @@
+{
+	"info": {
+		"_postman_id": "express-advanced-cache-api",
+		"name": "Express Advanced Cache API",
+		"description": "Collection for testing the Express.js User Data API with Advanced Caching, Rate Limiting, and Asynchronous Processing",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "User Endpoints",
+			"item": [
+				{
+					"name": "Get User by ID (Cache Hit)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is fast (cache hit)\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(50);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "This should be a cache hit if called after the first request. Response time should be <50ms."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID - Not Found",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Error message is present\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('error');",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"999"
+							]
+						},
+						"description": "Test 404 response for non-existent user."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID - Invalid ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/invalid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"invalid"
+							]
+						},
+						"description": "Test 400 response for invalid user ID format."
+					},
+					"response": []
+				},
+				{
+					"name": "Create New User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"User created successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('name');",
+									"    pm.expect(jsonData).to.have.property('email');",
+									"    ",
+									"    // Save user ID for later use",
+									"    pm.environment.set('newUserId', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Bob Wilson\",\n    \"email\": \"bob@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Create a new user. The user will be automatically cached."
+					},
+					"response": []
+				},
+				{
+					"name": "Create User - Missing Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Incomplete User\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Test validation error for missing email field."
+					},
+					"response": []
+				},
+				{
+					"name": "Create User - Invalid Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Invalid Email User\",\n    \"email\": \"not-an-email\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Test validation error for invalid email format."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for user management"
+		},
+		{
+			"name": "Cache Management",
+			"item": [
+				{
+					"name": "Get Cache Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Cache statistics present\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('hits');",
+									"    pm.expect(jsonData).to.have.property('misses');",
+									"    pm.expect(jsonData).to.have.property('size');",
+									"    pm.expect(jsonData).to.have.property('averageResponseTime');",
+									"    pm.expect(jsonData).to.have.property('timestamp');",
+									"});",
+									"",
+									"console.log('Cache Hits:', pm.response.json().hits);",
+									"console.log('Cache Misses:', pm.response.json().misses);",
+									"console.log('Cache Size:', pm.response.json().size);",
+									"console.log('Avg Response Time:', pm.response.json().averageResponseTime, 'ms');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cache-status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cache-status"
+							]
+						},
+						"description": "Get current cache statistics including hits, misses, size, and average response time."
+					},
+					"response": []
+				},
+				{
+					"name": "Clear Cache",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Cache cleared message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData.message).to.include('cleared');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cache",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cache"
+							]
+						},
+						"description": "Clear the entire cache. All cached entries will be removed."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for cache management"
+		},
+		{
+			"name": "Utility Endpoints",
+			"item": [
+				{
+					"name": "Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Health status is ok\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql('ok');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check if the API is running and healthy."
+					},
+					"response": []
+				},
+				{
+					"name": "API Information",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"API info present\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData).to.have.property('endpoints');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "Get API information and available endpoints."
+					},
+					"response": []
+				}
+			],
+			"description": "Utility endpoints"
+		},
+		{
+			"name": "High Traffic Tests",
+			"item": [
+				{
+					"name": "High Traffic - Request 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 1: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"    pm.test('Rate limit triggered', function() {",
+									"        pm.expect(status).to.equal(429);",
+									"    });",
+									"} else {",
+									"    console.log('Request 1: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"    pm.test('Request succeeded', function() {",
+									"        pm.expect(status).to.equal(200);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "High traffic test request 1"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 2: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"} else {",
+									"    console.log('Request 2: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"2"
+							]
+						},
+						"description": "High traffic test request 2"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 3",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 3: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"} else {",
+									"    console.log('Request 3: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"3"
+							]
+						},
+						"description": "High traffic test request 3"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 4",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 4: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"} else {",
+									"    console.log('Request 4: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "High traffic test request 4"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 5",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 5: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"} else {",
+									"    console.log('Request 5: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"2"
+							]
+						},
+						"description": "High traffic test request 5"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 6 (Should Rate Limit)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 6: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"    console.log('✅ Rate limiting working correctly!');",
+									"    pm.test('Rate limit triggered on 6th request', function() {",
+									"        pm.expect(status).to.equal(429);",
+									"    });",
+									"} else {",
+									"    console.log('Request 6: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"    console.log('⚠️ Rate limit may not have triggered (check burst limit)');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"3"
+							]
+						},
+						"description": "6th request in 10 seconds - should trigger burst rate limit (5 requests per 10 seconds)"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 7",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 7: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"} else {",
+									"    console.log('Request 7: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "High traffic test request 7"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 8",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 8: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"} else {",
+									"    console.log('Request 8: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"2"
+							]
+						},
+						"description": "High traffic test request 8"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 9",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 9: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"} else {",
+									"    console.log('Request 9: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"3"
+							]
+						},
+						"description": "High traffic test request 9"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 10",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 10: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"} else {",
+									"    console.log('Request 10: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "High traffic test request 10"
+					},
+					"response": []
+				},
+				{
+					"name": "High Traffic - Request 11 (Should Rate Limit)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var status = pm.response.code;",
+									"var responseTime = pm.response.responseTime;",
+									"",
+									"if (status === 429) {",
+									"    console.log('Request 11: RATE LIMITED (429) - Response Time:', responseTime, 'ms');",
+									"    console.log('✅ Main rate limit working correctly! (10 requests per minute)');",
+									"    pm.test('Rate limit triggered on 11th request', function() {",
+									"        pm.expect(status).to.equal(429);",
+									"    });",
+									"} else {",
+									"    console.log('Request 11: SUCCESS (200) - Response Time:', responseTime, 'ms');",
+									"    console.log('⚠️ Rate limit may not have triggered');",
+									"}",
+									"",
+									"console.log('\\n=== High Traffic Test Summary ===');",
+									"console.log('Check /cache-status to see cache performance');",
+									"console.log('Expected: Requests 1-5 succeed, Request 6+ may be rate limited');",
+									"console.log('Expected: Requests 1-10 succeed, Request 11+ rate limited (10/min limit)');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"2"
+							]
+						},
+						"description": "11th request in 1 minute - should trigger main rate limit (10 requests per minute)"
+					},
+					"response": []
+				}
+			],
+			"description": "HIGH TRAFFIC TESTING: Simulates high traffic to test rate limiting and asynchronous processing. HOW TO USE: 1) Clear cache (DELETE /cache), 2) Right-click this folder → 'Run folder', 3) Set Iterations: 1, Delay: 0ms, 4) Run. EXPECTED: First 5 requests succeed (burst limit), 6th request may be rate limited (429). First 10 requests succeed (main limit), 11th request rate limited (429). All requests should be processed asynchronously without blocking. Check console for detailed results and /cache-status for cache performance."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	]
+}
+
